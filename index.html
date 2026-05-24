@@ -389,14 +389,41 @@ function startAuth() {
 }
 
 function handleCallback() {
-  const hash = new URLSearchParams(window.location.hash.substring(1));
-  const params = new URLSearchParams(window.location.search);
-  const token = hash.get('access_token') || params.get('access_token');
-  const state = hash.get('state') || params.get('state');
+  const hash = window.location.hash;
+  const search = window.location.search;
+  console.log('URL hash:', hash);
+  console.log('URL search:', search);
+  
+  let token = null;
+  let state = null;
+
+  if (hash && hash.length > 1) {
+    const hashParams = new URLSearchParams(hash.substring(1));
+    token = hashParams.get('access_token');
+    state = hashParams.get('state');
+    console.log('Token from hash:', token ? 'found' : 'not found');
+  }
+  
+  if (!token && search) {
+    const searchParams = new URLSearchParams(search);
+    token = searchParams.get('access_token');
+    state = searchParams.get('state');
+    console.log('Token from search:', token ? 'found' : 'not found');
+  }
+
   if (token) {
     accessToken = token;
+    sessionStorage.setItem('pf_token', token);
     if (state) { folderId = state; localStorage.setItem('pf_folder', state); }
     window.history.replaceState({}, document.title, window.location.pathname);
+    showApp();
+    startAutoSync();
+    return;
+  }
+
+  const savedToken = sessionStorage.getItem('pf_token');
+  if (savedToken) {
+    accessToken = savedToken;
     showApp();
     startAutoSync();
   }
@@ -410,6 +437,7 @@ function showApp() {
 
 function logout() {
   accessToken = null;
+  sessionStorage.removeItem('pf_token');
   clearInterval(syncTimer);
   document.getElementById('authScreen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
